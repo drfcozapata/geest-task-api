@@ -233,7 +233,50 @@ El esquema incluye 5 tablas:
 
 ## Despliegue
 
-> ** Pendiente de despliegue.** Una vez corregidos todos los bugs y validados los tests localmente, se desplegará en [Railway](https://railway.app/) por su simplicidad para stack Node.js + MySQL incluido en un clic. La URL pública y detalles de acceso se documentarán aquí una vez desplegado.
+La API está desplegada y disponible en una URL pública. Se utilizaron dos servicios por separado ya que no existe una plataforma gratuita que ofrezca hosting de Node.js + MySQL en un solo servicio:
+
+| Servicio | Rol | Proveedor | Plan |
+|----------|-----|-----------|------|
+| **Render** | API (Node.js + Express) | Render Web Services | Free |
+| **Aiven** | Base de datos MySQL | Aiven Cloud | Free (0.5 GB) |
+
+### ¿Por qué esta combinación?
+
+- **Railway** ofrece Node.js + MySQL en un clic, pero su tier gratuito fue discontinuado; el plan más barato cobra por uso.
+- **Render** ofrece web services Node.js gratuitos (con cold start), pero no incluye MySQL.
+- **Aiven** ofrece MySQL gratuito con 0.5 GB de almacenamiento, suficiente para este proyecto.
+- La combinación Render + Aiven mantiene el costo en $0 y ambas plataformas son estables y confiables.
+
+### URL de la API desplegada
+
+> **[TU_URL_DE_RENDER]** (ejemplo: `https://geest-task-api.onrender.com`)
+
+Endpoints disponibles:
+- `GET /health` — Health check
+- `GET /docs` — Swagger UI
+- `POST /users`, `GET /users`, etc. — tal como se documentan en la sección Endpoints
+
+### Cómo ejecutar localmente
+
+```bash
+# Clonar y configurar
+git clone https://github.com/tu-usuario/geest-task-api.git
+cd geest-task-api
+npm install
+cp .env.example .env
+# Editar .env con tus credenciales de MySQL
+
+# Crear BD y tablas
+mysql -u root -p < migrations/001_initial_schema.sql
+mysql -u root -p geest_task_db < migrations/002_seed.sql
+mysql -u root -p geest_task_db < migrations/003_notifications_per_attempt.sql
+
+# Ejecutar tests
+npm test
+
+# Iniciar servidor
+npm run dev
+```
 
 ## Licencia
 
