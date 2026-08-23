@@ -48,13 +48,13 @@ npm run dev
 
 ## Scripts Disponibles
 
-| Comando | Descripción |
-|---------|-------------|
-| `npm run dev` | Iniciar en modo desarrollo (con tsx) |
-| `npm run build` | Compilar TypeScript |
-| `npm start` | Iniciar en modo producción |
-| `npm test` | Ejecutar tests con coverage |
-| `npm run test:watch` | Ejecutar tests en modo watch |
+| Comando              | Descripción                          |
+| -------------------- | ------------------------------------ |
+| `npm run dev`        | Iniciar en modo desarrollo (con tsx) |
+| `npm run build`      | Compilar TypeScript                  |
+| `npm start`          | Iniciar en modo producción           |
+| `npm test`           | Ejecutar tests con coverage          |
+| `npm run test:watch` | Ejecutar tests en modo watch         |
 
 ## Variables de Entorno
 
@@ -73,37 +73,37 @@ NODE_ENV=development
 
 ### Usuarios
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| POST | /users | Crear usuario |
-| GET | /users | Listar usuarios |
-| GET | /users/:idUser/tasks | Tareas del usuario |
-| DELETE | /users/:idUser | Eliminar usuario (soft delete) |
+| Método | Ruta                 | Descripción                    |
+| ------ | -------------------- | ------------------------------ |
+| POST   | /users               | Crear usuario                  |
+| GET    | /users               | Listar usuarios                |
+| GET    | /users/:idUser/tasks | Tareas del usuario             |
+| DELETE | /users/:idUser       | Eliminar usuario (soft delete) |
 
 ### Tareas
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| POST | /tasks | Crear tarea |
-| GET | /tasks | Listar tareas |
-| GET | /tasks/:idTask | Detalle de tarea |
-| POST | /tasks/:idTask/assign | Asignar usuarios |
-| POST | /tasks/:idTask/complete | Marcar completada |
-| GET | /tasks/:idTask/notifications | Notificaciones |
-| DELETE | /tasks/:idTask | Eliminar tarea (soft delete) |
+| Método | Ruta                         | Descripción                  |
+| ------ | ---------------------------- | ---------------------------- |
+| POST   | /tasks                       | Crear tarea                  |
+| GET    | /tasks                       | Listar tareas                |
+| GET    | /tasks/:idTask               | Detalle de tarea             |
+| POST   | /tasks/:idTask/assign        | Asignar usuarios             |
+| POST   | /tasks/:idTask/complete      | Marcar completada            |
+| GET    | /tasks/:idTask/notifications | Notificaciones               |
+| DELETE | /tasks/:idTask               | Eliminar tarea (soft delete) |
 
 ### Documentación
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | /docs | Swagger UI |
-| GET | /docs.json | OpenAPI JSON |
+| Método | Ruta       | Descripción  |
+| ------ | ---------- | ------------ |
+| GET    | /docs      | Swagger UI   |
+| GET    | /docs.json | OpenAPI JSON |
 
 ### Utilidades
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | /health | Health check |
+| Método | Ruta    | Descripción  |
+| ------ | ------- | ------------ |
+| GET    | /health | Health check |
 
 ## Idempotencia
 
@@ -181,6 +181,7 @@ Sin soft delete, el sistema no cumple con necesidades básicas de auditoría y r
 ## Funcionalidades recortadas
 
 No se recortó funcionalidad requerida por el reto. Fuera del alcance quedaron:
+
 - Autenticación y autorización (no requerido por el reto)
 - Paginación en endpoints GET (no requerido por el reto)
 - Rate limiting (no requerido por el reto)
@@ -217,12 +218,12 @@ npm run test:watch
 
 El esquema incluye 5 tablas:
 
-| Tabla | Descripción |
-|-------|-------------|
-| `users` | Usuarios registrados |
-| `tasks` | Tareas del sistema |
-| `task_assignments` | Relación usuario-tarea (muchos a muchos) |
-| `notifications` | Intentos de notificación por tarea |
+| Tabla              | Descripción                                   |
+| ------------------ | --------------------------------------------- |
+| `users`            | Usuarios registrados                          |
+| `tasks`            | Tareas del sistema                            |
+| `task_assignments` | Relación usuario-tarea (muchos a muchos)      |
+| `notifications`    | Intentos de notificación por tarea            |
 | `idempotency_keys` | Keys de idempotencia para deduplicar requests |
 
 ### Archivos de migración
@@ -235,10 +236,10 @@ El esquema incluye 5 tablas:
 
 La API está desplegada y disponible en una URL pública. Se utilizaron dos servicios por separado ya que no existe una plataforma gratuita que ofrezca hosting de Node.js + MySQL en un solo servicio:
 
-| Servicio | Rol | Proveedor | Plan |
-|----------|-----|-----------|------|
-| **Render** | API (Node.js + Express) | Render Web Services | Free |
-| **Aiven** | Base de datos MySQL | Aiven Cloud | Free (0.5 GB) |
+| Servicio   | Rol                     | Proveedor           | Plan          |
+| ---------- | ----------------------- | ------------------- | ------------- |
+| **Render** | API (Node.js + Express) | Render Web Services | Free          |
+| **Aiven**  | Base de datos MySQL     | Aiven Cloud         | Free (0.5 GB) |
 
 ### ¿Por qué esta combinación?
 
@@ -249,11 +250,12 @@ La API está desplegada y disponible en una URL pública. Se utilizaron dos serv
 
 ### URL de la API desplegada
 
-> **[TU_URL_DE_RENDER]** (ejemplo: `https://geest-task-api.onrender.com`)
+> **[[https://geest-task-api.onrender.com/](https://geest-task-api.onrender.com/)]**
 
 Endpoints disponibles:
-- `GET /health` — Health check
-- `GET /docs` — Swagger UI
+
+- `GET /health` — [Health check](https://geest-task-api.onrender.com/health)
+- `GET /docs` — [Swagger UI](https://geest-task-api.onrender.com/docs)
 - `POST /users`, `GET /users`, etc. — tal como se documentan en la sección Endpoints
 
 ### Cómo ejecutar localmente
