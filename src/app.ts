@@ -17,7 +17,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
+// Idempotencia en POST de ambos prefijos
 app.use('/api/v1', idempotencyMiddleware);
+app.use('/', idempotencyMiddleware);
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/docs.json', (req, res) => {
@@ -37,6 +39,8 @@ app.get('/health', async (req, res) => {
 
 app.use('/api/v1/users', usersRouter);
 app.use('/api/v1/tasks', tasksRouter);
+app.use('/users', usersRouter);
+app.use('/tasks', tasksRouter);
 
 app.use(errorHandler);
 

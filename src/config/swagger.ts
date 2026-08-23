@@ -14,8 +14,12 @@ const options: Options = {
     },
     servers: [
       {
+        url: '/',
+        description: 'API raíz (paths del reto)',
+      },
+      {
         url: '/api/v1',
-        description: 'API v1',
+        description: 'API v1 (prefijo alternativo)',
       },
     ],
     components: {

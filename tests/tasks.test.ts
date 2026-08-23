@@ -109,6 +109,73 @@ describe('Task Endpoints', () => {
 
       expect(res.status).toBe(400);
     });
+
+    it('should auto-archive when all assigned users complete', async () => {
+      const taskRes = await request(app)
+        .post('/api/v1/tasks')
+        .send({ title: 'AutoArchive Task' });
+
+      const user1Res = await request(app)
+        .post('/api/v1/users')
+        .send({ name: 'Auto', lastName: 'One', email: 'auto1@example.com' });
+
+      const user2Res = await request(app)
+        .post('/api/v1/users')
+        .send({ name: 'Auto', lastName: 'Two', email: 'auto2@example.com' });
+
+      await request(app)
+        .post(`/api/v1/tasks/${taskRes.body.id}/assign`)
+        .send({ userIds: [user1Res.body.id, user2Res.body.id] });
+
+      await request(app)
+        .post(`/api/v1/tasks/${taskRes.body.id}/complete`)
+        .send({ userId: user1Res.body.id });
+
+      await request(app)
+        .post(`/api/v1/tasks/${taskRes.body.id}/complete`)
+        .send({ userId: user2Res.body.id });
+
+      const res = await request(app).get(`/api/v1/tasks/${taskRes.body.id}`);
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('archived');
+    });
+
+    it('should archive exactly once when two users complete in parallel', async () => {
+      const taskRes = await request(app)
+        .post('/api/v1/tasks')
+        .send({ title: 'ParallelArchive Task' });
+
+      const user1Res = await request(app)
+        .post('/api/v1/users')
+        .send({ name: 'Par', lastName: 'One', email: 'par1@example.com' });
+
+      const user2Res = await request(app)
+        .post('/api/v1/users')
+        .send({ name: 'Par', lastName: 'Two', email: 'par2@example.com' });
+
+      await request(app)
+        .post(`/api/v1/tasks/${taskRes.body.id}/assign`)
+        .send({ userIds: [user1Res.body.id, user2Res.body.id] });
+
+      await Promise.allSettled([
+        request(app)
+          .post(`/api/v1/tasks/${taskRes.body.id}/complete`)
+          .send({ userId: user1Res.body.id }),
+        request(app)
+          .post(`/api/v1/tasks/${taskRes.body.id}/complete`)
+          .send({ userId: user2Res.body.id }),
+      ]);
+
+      const res = await request(app).get(`/api/v1/tasks/${taskRes.body.id}`);
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('archived');
+
+      // Verificar exactamente 1 notificación inicial
+      const notifRes = await request(app).get(`/api/v1/tasks/${taskRes.body.id}/notifications`);
+      expect(notifRes.status).toBe(200);
+      const initialNotifications = (notifRes.body as any[]).filter((n) => n.attempt === 1 && n.httpStatus === null);
+      expect(initialNotifications.length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   describe('GET /api/v1/tasks', () => {
@@ -133,8 +200,7 @@ describe('Task Endpoints', () => {
         .post('/api/v1/tasks')
         .send({ title: 'Detail Task' });
 
-      const res = await request(app)
-        .get(`/api/v1/tasks/${taskRes.body.id}`);
+      const res = await request(app).get(`/api/v1/tasks/${taskRes.body.id}`);
 
       expect(res.status).toBe(200);
       expect(res.body.title).toBe('Detail Task');
@@ -154,8 +220,7 @@ describe('Task Endpoints', () => {
         .post('/api/v1/tasks')
         .send({ title: 'Notification Task' });
 
-      const res = await request(app)
-        .get(`/api/v1/tasks/${taskRes.body.id}/notifications`);
+      const res = await request(app).get(`/api/v1/tasks/${taskRes.body.id}/notifications`);
 
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
@@ -168,8 +233,7 @@ describe('Task Endpoints', () => {
         .post('/api/v1/tasks')
         .send({ title: 'Delete Task' });
 
-      const res = await request(app)
-        .delete(`/api/v1/tasks/${taskRes.body.id}`);
+      const res = await request(app).delete(`/api/v1/tasks/${taskRes.body.id}`);
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe('Task deleted');

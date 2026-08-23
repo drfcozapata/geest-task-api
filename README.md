@@ -8,7 +8,7 @@ API REST para gestión de tareas para empresas, desarrollada con Node.js, Expres
 - Asignación de múltiples usuarios a tareas
 - Marcado de completado por usuario
 - Archivado automático de tareas cuando todos los usuarios completan
-- Notificaciones con reintentos exponenciales
+- Notificaciones con reintentos exponenciales (hasta 3 intentos)
 - Idempotencia en endpoints POST
 - Soft delete para preservar histórico
 - Documentación Swagger/OpenAPI
@@ -40,6 +40,7 @@ cp .env.example .env
 # Crear base de datos, tablas y datos de prueba
 mysql -u root -p < migrations/001_initial_schema.sql
 mysql -u root -p geest_task_db < migrations/002_seed.sql
+mysql -u root -p geest_task_db < migrations/003_notifications_per_attempt.sql
 
 # Iniciar servidor en modo desarrollo
 npm run dev
@@ -74,22 +75,22 @@ NODE_ENV=development
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | /api/v1/users | Crear usuario |
-| GET | /api/v1/users | Listar usuarios |
-| GET | /api/v1/users/:idUser/tasks | Tareas del usuario |
-| DELETE | /api/v1/users/:idUser | Eliminar usuario (soft delete) |
+| POST | /users | Crear usuario |
+| GET | /users | Listar usuarios |
+| GET | /users/:idUser/tasks | Tareas del usuario |
+| DELETE | /users/:idUser | Eliminar usuario (soft delete) |
 
 ### Tareas
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | /api/v1/tasks | Crear tarea |
-| GET | /api/v1/tasks | Listar tareas |
-| GET | /api/v1/tasks/:idTask | Detalle de tarea |
-| POST | /api/v1/tasks/:idTask/assign | Asignar usuarios |
-| POST | /api/v1/tasks/:idTask/complete | Marcar completada |
-| GET | /api/v1/tasks/:idTask/notifications | Notificaciones |
-| DELETE | /api/v1/tasks/:idTask | Eliminar tarea (soft delete) |
+| POST | /tasks | Crear tarea |
+| GET | /tasks | Listar tareas |
+| GET | /tasks/:idTask | Detalle de tarea |
+| POST | /tasks/:idTask/assign | Asignar usuarios |
+| POST | /tasks/:idTask/complete | Marcar completada |
+| GET | /tasks/:idTask/notifications | Notificaciones |
+| DELETE | /tasks/:idTask | Eliminar tarea (soft delete) |
 
 ### Documentación
 
@@ -106,7 +107,101 @@ NODE_ENV=development
 
 ## Idempotencia
 
-Todos los endpoints POST aceptan el header `Idempotency-Key`. Si se envía dos veces la misma key con el mismo body, la operación se ejecuta una sola vez y ambas respuestas son idénticas.
+Todos los endpoints POST aceptan el header `Idempotency-Key`. Si se envía dos veces la misma key con el mismo body, la operación se ejecuta una sola vez y ambas respuestas son idénticas, incluso cuando ambos requests llegan en paralelo.
+
+## UML — Diagrama ER
+
+```mermaid
+erDiagram
+    USERS {
+        int_unsigned id PK
+        varchar_100 name
+        varchar_100 last_name
+        varchar_255 email UK
+        timestamp created_at
+        timestamp deleted_at
+    }
+
+    TASKS {
+        int_unsigned id PK
+        varchar_255 title
+        text description
+        enum status "open|archived"
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at
+    }
+
+    TASK_ASSIGNMENTS {
+        int_unsigned id PK
+        int_unsigned task_id FK
+        int_unsigned user_id FK
+        boolean completed
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    NOTIFICATIONS {
+        int_unsigned id PK
+        int_unsigned task_id FK
+        tinyint_unsigned attempt
+        smallint http_status
+        json payload
+        timestamp next_attempt_at
+    }
+
+    IDEMPOTENCY_KEYS {
+        varchar_255 key PK
+        json response
+        smallint status_code
+        timestamp created_at
+    }
+
+    USERS ||--o{ TASK_ASSIGNMENTS : "has"
+    TASKS ||--o{ TASK_ASSIGNMENTS : "contains"
+    TASKS ||--o{ NOTIFICATIONS : "archived_in"
+```
+
+## Mejora elegida: Soft Delete
+
+### ¿Qué problema resuelve?
+
+El borrado físico (`DELETE`) elimina registros permanentemente. En un sistema de gestión de tareas, esto implica pérdida de trazabilidad: no se puede auditar quién eliminó qué, ni recuperar tareas o usuarios borrados accidentalmente. Además, el borrado físico puede romper la integridad referencial: si se elimina un usuario que tiene asignaciones en `task_assignments`, se pierde el historial de quién completó qué.
+
+### ¿Por qué consideraste que era necesaria?
+
+Sin soft delete, el sistema no cumple con necesidades básicas de auditoría y retención de datos que cualquier producto empresarial requiere. Un usuario o tarea eliminados no deberían desaparecer del historial; deberían marcarse como inactivos y excluirse de las consultas normales.
+
+### ¿Por qué esta mejora sobre otras alternativas?
+
+- **vs. tabla de auditoría separada:** el soft delete mantiene los datos en la misma tabla con consultas transparentes (`WHERE deleted_at IS NULL`), sin complejidad adicional de sincronización entre tablas.
+- **vs. paginación / rate-limiting / auth:** estas mejoras aportan valor operativo, pero el soft delete resuelve un problema de integridad de datos que afecta directamente la confiabilidad del producto.
+- **vs. Swagger:** Swagger es herramienta de documentación, no funcionalidad de producto. El reto pide una mejora funcional, no tooling.
+
+## Funcionalidades recortadas
+
+No se recortó funcionalidad requerida por el reto. Fuera del alcance quedaron:
+- Autenticación y autorización (no requerido por el reto)
+- Paginación en endpoints GET (no requerido por el reto)
+- Rate limiting (no requerido por el reto)
+
+## Decisiones Técnicas
+
+1. **Soft delete:** Se utiliza `deleted_at` nullable para preservar el histórico de datos
+2. **Idempotencia:** Implementada con tabla `idempotency_keys` y patrón "reservar primero" dentro de transacciones explícitas para garantizar concurrencia real
+3. **Notificaciones:** Worker asíncrono con reintentos exponenciales (1s, 3s, 10s) y historial por intento (una fila por intento)
+4. **Archivado exactly-once:** Transacción con `SELECT ... FOR UPDATE` para serializar completions paralelas
+5. **ts-x en lugar de ts-node:** Compatibilidad con TypeScript 7
+6. **@swc/jest en lugar de ts-jest:** Tests más rápidos y compatibles con TS 7
+
+## Supuestos
+
+1. No hay autenticación (no requerido por el reto)
+2. El `description` en tasks es opcional
+3. El estado inicial es `open`, solo cambia a `archived`
+4. Un usuario no puede completar una tarea a la que no está asignado
+5. `NOTIFY_URL` es configurable vía variable de entorno
+6. Las notificaciones solo se reintentan ante errores 5xx o falta de respuesta (no ante 4xx)
 
 ## Testing
 
@@ -134,23 +229,11 @@ El esquema incluye 5 tablas:
 
 - `migrations/001_initial_schema.sql` - Esquema de la base de datos
 - `migrations/002_seed.sql` - Datos de prueba (10 usuarios, ~90 tareas)
+- `migrations/003_notifications_per_attempt.sql` - Agrega `next_attempt_at` y unique constraint para historial por intento
 
-## Decisiones Técnicas
+## Despliegue
 
-1. **Soft delete:** Se utiliza `deleted_at` nullable para preservar el histórico de datos
-2. **Idempotencia:** Implementada con tabla `idempotency_keys` y `SELECT ... FOR UPDATE`
-3. **Notificaciones:** Worker asíncrono con reintentos exponenciales (1s, 3s, 10s)
-4. **Archivado exactly-once:** Transacción con lock optimista
-5. **ts-x en lugar de ts-node:** Compatibilidad con TypeScript 7
-6. **@swc/jest en lugar de ts-jest:** Tests más rápidos y compatibles con TS 7
-
-## Supuestos
-
-1. No hay autenticación (no requerido por el reto)
-2. El `description` en tasks es opcional
-3. El estado inicial es `open`, solo cambia a `archived`
-4. Un usuario no puede completar una tarea a la que no está asignado
-5. `NOTIFY_URL` es configurable vía variable de entorno
+> ** Pendiente de despliegue.** Una vez corregidos todos los bugs y validados los tests localmente, se desplegará en [Railway](https://railway.app/) por su simplicidad para stack Node.js + MySQL incluido en un clic. La URL pública y detalles de acceso se documentarán aquí una vez desplegado.
 
 ## Licencia
 

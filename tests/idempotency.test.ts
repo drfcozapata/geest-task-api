@@ -61,4 +61,27 @@ describe('Idempotency', () => {
     expect(res2.status).toBe(201);
     expect(res1.body.id).not.toBe(res2.body.id);
   });
+
+  it('should create only one resource with parallel requests using same key', async () => {
+    const idempotencyKey = 'parallel-key-456';
+
+    await Promise.allSettled([
+      request(app)
+        .post('/users')
+        .set('Idempotency-Key', idempotencyKey)
+        .send({ name: 'Parallel', lastName: 'User', email: 'parallel@example.com' }),
+      request(app)
+        .post('/users')
+        .set('Idempotency-Key', idempotencyKey)
+        .send({ name: 'Parallel', lastName: 'User', email: 'parallel@example.com' }),
+    ]);
+
+    const pool = getPool();
+    const [users] = await pool.query(
+      'SELECT id FROM users WHERE email = ?',
+      ['parallel@example.com']
+    );
+
+    expect((users as any[]).length).toBe(1);
+  });
 });

@@ -216,6 +216,13 @@ router.post(
     try {
       await connection.beginTransaction();
 
+      // Serializa las completions de esta tarea: el 2º request espera aquí
+      // hasta que el 1º haga commit, y su COUNT posterior ya verá el dato real.
+      await connection.query(
+        'SELECT id FROM tasks WHERE id = ? FOR UPDATE',
+        [idTask]
+      );
+
       await connection.query(
         'UPDATE task_assignments SET completed = TRUE WHERE task_id = ? AND user_id = ?',
         [idTask, userId]
@@ -249,7 +256,8 @@ router.post(
           };
 
           await connection.query(
-            'INSERT INTO notifications (task_id, attempt, payload) VALUES (?, 1, ?)',
+            `INSERT INTO notifications (task_id, attempt, payload) VALUES (?, 1, ?)
+             ON DUPLICATE KEY UPDATE attempt = attempt`,
             [idTask, JSON.stringify(payload)]
           );
 
