@@ -17,7 +17,7 @@ export const idempotencyMiddleware = async (
 
   try {
     const [existing] = await pool.query(
-      'SELECT response, status_code FROM idempotency_keys WHERE key = ? FOR UPDATE',
+      'SELECT response, status_code FROM idempotency_keys WHERE `key` = ? FOR UPDATE',
       [idempotencyKey]
     );
 
@@ -34,7 +34,7 @@ export const idempotencyMiddleware = async (
       if (!responseSent) {
         responseSent = true;
         pool.query(
-          'INSERT INTO idempotency_keys (key, response, status_code) VALUES (?, ?, ?)',
+          'INSERT INTO idempotency_keys (`key`, response, status_code) VALUES (?, ?, ?)',
           [idempotencyKey, JSON.stringify(body), res.statusCode]
         ).catch((error) => {
           logger.error('Failed to store idempotency key:', error);

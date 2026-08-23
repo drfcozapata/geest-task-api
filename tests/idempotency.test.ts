@@ -1,7 +1,19 @@
 import request from 'supertest';
 import app from '../src/app';
+import { getPool } from '../src/config/database';
 
 describe('Idempotency', () => {
+  beforeAll(async () => {
+    const pool = getPool();
+    await pool.query('SET FOREIGN_KEY_CHECKS = 0');
+    await pool.query('TRUNCATE TABLE idempotency_keys');
+    await pool.query('TRUNCATE TABLE notifications');
+    await pool.query('TRUNCATE TABLE task_assignments');
+    await pool.query('TRUNCATE TABLE tasks');
+    await pool.query('TRUNCATE TABLE users');
+    await pool.query('SET FOREIGN_KEY_CHECKS = 1');
+  });
+
   it('should return same response for same idempotency key', async () => {
     const idempotencyKey = 'test-key-123';
 

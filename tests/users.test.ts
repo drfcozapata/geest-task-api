@@ -1,7 +1,19 @@
 import request from 'supertest';
 import app from '../src/app';
+import { getPool } from '../src/config/database';
 
 describe('User Endpoints', () => {
+  beforeAll(async () => {
+    const pool = getPool();
+    await pool.query('SET FOREIGN_KEY_CHECKS = 0');
+    await pool.query('TRUNCATE TABLE idempotency_keys');
+    await pool.query('TRUNCATE TABLE notifications');
+    await pool.query('TRUNCATE TABLE task_assignments');
+    await pool.query('TRUNCATE TABLE tasks');
+    await pool.query('TRUNCATE TABLE users');
+    await pool.query('SET FOREIGN_KEY_CHECKS = 1');
+  });
+
   describe('POST /api/v1/users', () => {
     it('should create a new user', async () => {
       const res = await request(app)
@@ -24,7 +36,7 @@ describe('User Endpoints', () => {
         .post('/api/v1/users')
         .send({
           lastName: 'Doe',
-          email: 'john@example.com',
+          email: 'john2@example.com',
         });
 
       expect(res.status).toBe(400);

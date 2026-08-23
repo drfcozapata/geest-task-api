@@ -3,7 +3,7 @@ import app from '../src/app';
 
 describe('Swagger Documentation', () => {
   it('should serve swagger ui', async () => {
-    const res = await request(app).get('/docs');
+    const res = await request(app).get('/docs/');
 
     expect(res.status).toBe(200);
     expect(res.text).toContain('swagger');

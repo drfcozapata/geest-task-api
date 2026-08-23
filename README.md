@@ -15,12 +15,13 @@ API REST para gestión de tareas para empresas, desarrollada con Node.js, Expres
 
 ## Stack Tecnológico
 
-- **Runtime:** Node.js
-- **Framework:** Express + TypeScript
+- **Runtime:** Node.js v24+
+- **Framework:** Express 5 + TypeScript 7
 - **Base de datos:** MySQL
 - **Documentación:** Swagger UI + OpenAPI 3.0.3
-- **Testing:** Jest + Supertest
+- **Testing:** Jest 30 + @swc/jest + Supertest
 - **Logger:** Winston
+- **Dev runner:** tsx (reemplaza a ts-node)
 
 ## Instalación
 
@@ -36,15 +37,23 @@ npm install
 cp .env.example .env
 # Editar .env con tus credenciales de MySQL
 
-# Crear base de datos y tablas
+# Crear base de datos, tablas y datos de prueba
 mysql -u root -p < migrations/001_initial_schema.sql
+mysql -u root -p geest_task_db < migrations/002_seed.sql
 
-# Compilar TypeScript
-npm run build
-
-# Iniciar servidor
-npm start
+# Iniciar servidor en modo desarrollo
+npm run dev
 ```
+
+## Scripts Disponibles
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Iniciar en modo desarrollo (con tsx) |
+| `npm run build` | Compilar TypeScript |
+| `npm start` | Iniciar en modo producción |
+| `npm test` | Ejecutar tests con coverage |
+| `npm run test:watch` | Ejecutar tests en modo watch |
 
 ## Variables de Entorno
 
@@ -109,21 +118,22 @@ npm test
 npm run test:watch
 ```
 
-## Deploy
+## Base de Datos
 
-### Opciones recomendadas (gratuitas)
+El esquema incluye 5 tablas:
 
-1. **Railway.app** - Despliegue automático desde GitHub con MySQL integrado
-2. **Render.com** - Free tier con base de datos
-3. **Fly.io** - Free tier
+| Tabla | Descripción |
+|-------|-------------|
+| `users` | Usuarios registrados |
+| `tasks` | Tareas del sistema |
+| `task_assignments` | Relación usuario-tarea (muchos a muchos) |
+| `notifications` | Intentos de notificación por tarea |
+| `idempotency_keys` | Keys de idempotencia para deduplicar requests |
 
-### Deploy en Railway
+### Archivos de migración
 
-1. Crear cuenta en Railway
-2. Conectar repositorio de GitHub
-3. Agregar plugin MySQL
-4. Configurar variables de entorno
-5. Deploy automático
+- `migrations/001_initial_schema.sql` - Esquema de la base de datos
+- `migrations/002_seed.sql` - Datos de prueba (10 usuarios, ~90 tareas)
 
 ## Decisiones Técnicas
 
@@ -131,6 +141,8 @@ npm run test:watch
 2. **Idempotencia:** Implementada con tabla `idempotency_keys` y `SELECT ... FOR UPDATE`
 3. **Notificaciones:** Worker asíncrono con reintentos exponenciales (1s, 3s, 10s)
 4. **Archivado exactly-once:** Transacción con lock optimista
+5. **ts-x en lugar de ts-node:** Compatibilidad con TypeScript 7
+6. **@swc/jest en lugar de ts-jest:** Tests más rápidos y compatibles con TS 7
 
 ## Supuestos
 
