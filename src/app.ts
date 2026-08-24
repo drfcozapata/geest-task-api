@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
-import { connectDB } from './config/database';
+import { connectDB, getPool } from './config/database';
 import { idempotencyMiddleware } from './middleware/idempotency';
 import { errorHandler } from './middleware/errorHandler';
 import { startNotificationWorker } from './workers/notificationWorker';
@@ -28,7 +28,6 @@ app.get('/docs.json', (req, res) => {
 
 app.get('/health', async (req, res) => {
   try {
-    const { getPool } = require('./config/database');
     const pool = getPool();
     await pool.query('SELECT 1');
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
@@ -59,6 +58,14 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Solo arrancamos el servidor real (listen + connectDB + worker) cuando este
+// archivo se ejecuta directamente (`node dist/app.js` / `tsx src/app.ts`).
+// Cuando los tests hacen `import app from '../src/app'` para pasárselo a
+// supertest, este bloque NO corre: supertest no necesita un socket real
+// escuchando, y evitamos que cada test file deje un listener y un
+// startNotificationWorker() colgados que Jest nunca ve cerrar.
+if (require.main === module) {
+  startServer();
+}
 
 export default app;

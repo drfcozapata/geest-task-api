@@ -16,13 +16,11 @@ describe('User Endpoints', () => {
 
   describe('POST /api/v1/users', () => {
     it('should create a new user', async () => {
-      const res = await request(app)
-        .post('/api/v1/users')
-        .send({
-          name: 'John',
-          lastName: 'Doe',
-          email: 'john@example.com',
-        });
+      const res = await request(app).post('/api/v1/users').send({
+        name: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+      });
 
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('id');
@@ -32,46 +30,38 @@ describe('User Endpoints', () => {
     });
 
     it('should return error if name is missing', async () => {
-      const res = await request(app)
-        .post('/api/v1/users')
-        .send({
-          lastName: 'Doe',
-          email: 'john2@example.com',
-        });
+      const res = await request(app).post('/api/v1/users').send({
+        lastName: 'Doe',
+        email: 'john2@example.com',
+      });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toHaveProperty('code');
     });
 
     it('should return error if email is invalid', async () => {
-      const res = await request(app)
-        .post('/api/v1/users')
-        .send({
-          name: 'John',
-          lastName: 'Doe',
-          email: 'invalid-email',
-        });
+      const res = await request(app).post('/api/v1/users').send({
+        name: 'John',
+        lastName: 'Doe',
+        email: 'invalid-email',
+      });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toHaveProperty('code');
     });
 
     it('should return error if email already exists', async () => {
-      await request(app)
-        .post('/api/v1/users')
-        .send({
-          name: 'John',
-          lastName: 'Doe',
-          email: 'john@example.com',
-        });
+      await request(app).post('/api/v1/users').send({
+        name: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+      });
 
-      const res = await request(app)
-        .post('/api/v1/users')
-        .send({
-          name: 'Jane',
-          lastName: 'Doe',
-          email: 'john@example.com',
-        });
+      const res = await request(app).post('/api/v1/users').send({
+        name: 'Jane',
+        lastName: 'Doe',
+        email: 'john@example.com',
+      });
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('DUPLICATE_EMAIL');
@@ -89,16 +79,13 @@ describe('User Endpoints', () => {
 
   describe('DELETE /api/v1/users/:idUser', () => {
     it('should soft delete a user', async () => {
-      const userRes = await request(app)
-        .post('/api/v1/users')
-        .send({
-          name: 'ToDelete',
-          lastName: 'User',
-          email: 'delete@example.com',
-        });
+      const userRes = await request(app).post('/api/v1/users').send({
+        name: 'ToDelete',
+        lastName: 'User',
+        email: 'delete@example.com',
+      });
 
-      const res = await request(app)
-        .delete(`/api/v1/users/${userRes.body.id}`);
+      const res = await request(app).delete(`/api/v1/users/${userRes.body.id}`);
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe('User deleted');

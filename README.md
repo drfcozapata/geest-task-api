@@ -27,7 +27,7 @@ API REST para gestión de tareas para empresas, desarrollada con Node.js, Expres
 
 ```bash
 # Clonar repositorio
-git clone https://github.com/tu-usuario/geest-task-api.git
+git clone https://github.com/drfcozapata/geest-task-api.git
 cd geest-task-api
 
 # Instalar dependencias
@@ -250,7 +250,9 @@ La API está desplegada y disponible en una URL pública. Se utilizaron dos serv
 
 ### URL de la API desplegada
 
-> **[[https://geest-task-api.onrender.com/](https://geest-task-api.onrender.com/)]**
+> **[https://geest-task-api.onrender.com/](https://geest-task-api.onrender.com/)**
+
+> _NOTA_: el free tier de Render duerme por inactividad, por lo que **el primer request** puede tardar ~30-60 segundos en responder, lo que no significa que esté caído. Se puede consultar el endpoint '/health' (link a continuación) antes de hacer uso de la API para garantizar que estará '_despierto_'.
 
 Endpoints disponibles:
 

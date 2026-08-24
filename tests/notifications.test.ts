@@ -46,19 +46,16 @@ describe('Notification Retries', () => {
       .post(`/tasks/${taskRes.body.id}/assign`)
       .send({ userIds: [userRes.body.id] });
 
-    await request(app)
-      .post(`/tasks/${taskRes.body.id}/complete`)
-      .send({ userId: userRes.body.id });
+    await request(app).post(`/tasks/${taskRes.body.id}/complete`).send({ userId: userRes.body.id });
 
     await notificationWorker.processNotifications();
     await notificationWorker.processNotifications();
     await notificationWorker.processNotifications();
 
     const pool = getPool();
-    const [notifications] = await pool.query(
-      'SELECT * FROM notifications WHERE task_id = ? ORDER BY attempt',
-      [taskRes.body.id]
-    );
+    const [notifications] = await pool.query('SELECT * FROM notifications WHERE task_id = ? ORDER BY attempt', [
+      taskRes.body.id,
+    ]);
 
     const notifs = notifications as any[];
     expect(notifs.length).toBe(3);
@@ -81,17 +78,14 @@ describe('Notification Retries', () => {
       .post(`/tasks/${taskRes.body.id}/assign`)
       .send({ userIds: [userRes.body.id] });
 
-    await request(app)
-      .post(`/tasks/${taskRes.body.id}/complete`)
-      .send({ userId: userRes.body.id });
+    await request(app).post(`/tasks/${taskRes.body.id}/complete`).send({ userId: userRes.body.id });
 
     await notificationWorker.processNotifications();
 
     const pool = getPool();
-    const [notifications] = await pool.query(
-      'SELECT * FROM notifications WHERE task_id = ? ORDER BY attempt',
-      [taskRes.body.id]
-    );
+    const [notifications] = await pool.query('SELECT * FROM notifications WHERE task_id = ? ORDER BY attempt', [
+      taskRes.body.id,
+    ]);
 
     const notifs = notifications as any[];
     expect(notifs.length).toBe(1);

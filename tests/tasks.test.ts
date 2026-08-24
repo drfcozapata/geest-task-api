@@ -16,12 +16,10 @@ describe('Task Endpoints', () => {
 
   describe('POST /api/v1/tasks', () => {
     it('should create a new task', async () => {
-      const res = await request(app)
-        .post('/api/v1/tasks')
-        .send({
-          title: 'Test Task',
-          description: 'This is a test task',
-        });
+      const res = await request(app).post('/api/v1/tasks').send({
+        title: 'Test Task',
+        description: 'This is a test task',
+      });
 
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('id');
@@ -30,11 +28,9 @@ describe('Task Endpoints', () => {
     });
 
     it('should return error if title is missing', async () => {
-      const res = await request(app)
-        .post('/api/v1/tasks')
-        .send({
-          description: 'This is a test task',
-        });
+      const res = await request(app).post('/api/v1/tasks').send({
+        description: 'This is a test task',
+      });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toHaveProperty('code');
@@ -43,9 +39,7 @@ describe('Task Endpoints', () => {
 
   describe('POST /api/v1/tasks/:idTask/assign', () => {
     it('should assign users to a task', async () => {
-      const taskRes = await request(app)
-        .post('/api/v1/tasks')
-        .send({ title: 'Task to Assign' });
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'Task to Assign' });
 
       const user1Res = await request(app)
         .post('/api/v1/users')
@@ -74,9 +68,7 @@ describe('Task Endpoints', () => {
 
   describe('POST /api/v1/tasks/:idTask/complete', () => {
     it('should mark task as completed by user', async () => {
-      const taskRes = await request(app)
-        .post('/api/v1/tasks')
-        .send({ title: 'Task to Complete' });
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'Task to Complete' });
 
       const userRes = await request(app)
         .post('/api/v1/users')
@@ -95,9 +87,7 @@ describe('Task Endpoints', () => {
     });
 
     it('should return 400 if user not assigned', async () => {
-      const taskRes = await request(app)
-        .post('/api/v1/tasks')
-        .send({ title: 'Task Not Assigned' });
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'Task Not Assigned' });
 
       const userRes = await request(app)
         .post('/api/v1/users')
@@ -111,9 +101,7 @@ describe('Task Endpoints', () => {
     });
 
     it('should auto-archive when all assigned users complete', async () => {
-      const taskRes = await request(app)
-        .post('/api/v1/tasks')
-        .send({ title: 'AutoArchive Task' });
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'AutoArchive Task' });
 
       const user1Res = await request(app)
         .post('/api/v1/users')
@@ -127,13 +115,9 @@ describe('Task Endpoints', () => {
         .post(`/api/v1/tasks/${taskRes.body.id}/assign`)
         .send({ userIds: [user1Res.body.id, user2Res.body.id] });
 
-      await request(app)
-        .post(`/api/v1/tasks/${taskRes.body.id}/complete`)
-        .send({ userId: user1Res.body.id });
+      await request(app).post(`/api/v1/tasks/${taskRes.body.id}/complete`).send({ userId: user1Res.body.id });
 
-      await request(app)
-        .post(`/api/v1/tasks/${taskRes.body.id}/complete`)
-        .send({ userId: user2Res.body.id });
+      await request(app).post(`/api/v1/tasks/${taskRes.body.id}/complete`).send({ userId: user2Res.body.id });
 
       const res = await request(app).get(`/api/v1/tasks/${taskRes.body.id}`);
       expect(res.status).toBe(200);
@@ -141,9 +125,7 @@ describe('Task Endpoints', () => {
     });
 
     it('should archive exactly once when two users complete in parallel', async () => {
-      const taskRes = await request(app)
-        .post('/api/v1/tasks')
-        .send({ title: 'ParallelArchive Task' });
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'ParallelArchive Task' });
 
       const user1Res = await request(app)
         .post('/api/v1/users')
@@ -158,12 +140,8 @@ describe('Task Endpoints', () => {
         .send({ userIds: [user1Res.body.id, user2Res.body.id] });
 
       await Promise.allSettled([
-        request(app)
-          .post(`/api/v1/tasks/${taskRes.body.id}/complete`)
-          .send({ userId: user1Res.body.id }),
-        request(app)
-          .post(`/api/v1/tasks/${taskRes.body.id}/complete`)
-          .send({ userId: user2Res.body.id }),
+        request(app).post(`/api/v1/tasks/${taskRes.body.id}/complete`).send({ userId: user1Res.body.id }),
+        request(app).post(`/api/v1/tasks/${taskRes.body.id}/complete`).send({ userId: user2Res.body.id }),
       ]);
 
       const res = await request(app).get(`/api/v1/tasks/${taskRes.body.id}`);
@@ -196,9 +174,7 @@ describe('Task Endpoints', () => {
 
   describe('GET /api/v1/tasks/:idTask', () => {
     it('should return task details', async () => {
-      const taskRes = await request(app)
-        .post('/api/v1/tasks')
-        .send({ title: 'Detail Task' });
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'Detail Task' });
 
       const res = await request(app).get(`/api/v1/tasks/${taskRes.body.id}`);
 
@@ -216,9 +192,7 @@ describe('Task Endpoints', () => {
 
   describe('GET /api/v1/tasks/:idTask/notifications', () => {
     it('should return task notifications', async () => {
-      const taskRes = await request(app)
-        .post('/api/v1/tasks')
-        .send({ title: 'Notification Task' });
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'Notification Task' });
 
       const res = await request(app).get(`/api/v1/tasks/${taskRes.body.id}/notifications`);
 
@@ -229,9 +203,7 @@ describe('Task Endpoints', () => {
 
   describe('DELETE /api/v1/tasks/:idTask', () => {
     it('should soft delete a task', async () => {
-      const taskRes = await request(app)
-        .post('/api/v1/tasks')
-        .send({ title: 'Delete Task' });
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'Delete Task' });
 
       const res = await request(app).delete(`/api/v1/tasks/${taskRes.body.id}`);
 

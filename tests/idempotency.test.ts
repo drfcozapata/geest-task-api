@@ -17,23 +17,17 @@ describe('Idempotency', () => {
   it('should return same response for same idempotency key', async () => {
     const idempotencyKey = 'test-key-123';
 
-    const res1 = await request(app)
-      .post('/api/v1/users')
-      .set('Idempotency-Key', idempotencyKey)
-      .send({
-        name: 'Idempotent',
-        lastName: 'User',
-        email: 'idempotent@example.com',
-      });
+    const res1 = await request(app).post('/api/v1/users').set('Idempotency-Key', idempotencyKey).send({
+      name: 'Idempotent',
+      lastName: 'User',
+      email: 'idempotent@example.com',
+    });
 
-    const res2 = await request(app)
-      .post('/api/v1/users')
-      .set('Idempotency-Key', idempotencyKey)
-      .send({
-        name: 'Idempotent',
-        lastName: 'User',
-        email: 'idempotent@example.com',
-      });
+    const res2 = await request(app).post('/api/v1/users').set('Idempotency-Key', idempotencyKey).send({
+      name: 'Idempotent',
+      lastName: 'User',
+      email: 'idempotent@example.com',
+    });
 
     expect(res1.status).toBe(201);
     expect(res2.status).toBe(201);
@@ -41,21 +35,17 @@ describe('Idempotency', () => {
   });
 
   it('should create new resource without idempotency key', async () => {
-    const res1 = await request(app)
-      .post('/api/v1/users')
-      .send({
-        name: 'NoKey',
-        lastName: 'User',
-        email: 'nokey@example.com',
-      });
+    const res1 = await request(app).post('/api/v1/users').send({
+      name: 'NoKey',
+      lastName: 'User',
+      email: 'nokey@example.com',
+    });
 
-    const res2 = await request(app)
-      .post('/api/v1/users')
-      .send({
-        name: 'NoKey2',
-        lastName: 'User',
-        email: 'nokey2@example.com',
-      });
+    const res2 = await request(app).post('/api/v1/users').send({
+      name: 'NoKey2',
+      lastName: 'User',
+      email: 'nokey2@example.com',
+    });
 
     expect(res1.status).toBe(201);
     expect(res2.status).toBe(201);
@@ -77,10 +67,7 @@ describe('Idempotency', () => {
     ]);
 
     const pool = getPool();
-    const [users] = await pool.query(
-      'SELECT id FROM users WHERE email = ?',
-      ['parallel@example.com']
-    );
+    const [users] = await pool.query('SELECT id FROM users WHERE email = ?', ['parallel@example.com']);
 
     expect((users as any[]).length).toBe(1);
   });
