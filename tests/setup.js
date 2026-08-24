@@ -1,0 +1,8 @@
+// Load .env.test with override to ensure test DB is used
+const dotenv = require('dotenv');
+const path = require('path');
+
+dotenv.config({
+  path: path.resolve(__dirname, '..', '.env.test'),
+  override: true,
+});

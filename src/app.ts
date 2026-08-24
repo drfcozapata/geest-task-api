@@ -6,6 +6,7 @@ import { connectDB, getPool } from './config/database';
 import { idempotencyMiddleware } from './middleware/idempotency';
 import { errorHandler } from './middleware/errorHandler';
 import { startNotificationWorker } from './workers/notificationWorker';
+import { checkAndSeed } from './scripts/ensure-seed';
 import { logger } from './utils/logger';
 import usersRouter from './routes/users';
 import tasksRouter from './routes/tasks';
@@ -46,6 +47,7 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     await connectDB();
+    await checkAndSeed();
     startNotificationWorker();
 
     app.listen(PORT, () => {
