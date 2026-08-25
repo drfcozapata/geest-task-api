@@ -119,6 +119,33 @@ describe('User Endpoints', () => {
     });
   });
 
+  describe('GET /api/v1/users/deleted', () => {
+    it('should return list of soft-deleted users', async () => {
+      const userRes = await request(app).post('/api/v1/users').send({
+        name: 'Deleted',
+        lastName: 'ListUser',
+        email: 'deletedlist@example.com',
+      });
+
+      await request(app).delete(`/api/v1/users/${userRes.body.id}`);
+
+      const res = await request(app).get('/api/v1/users/deleted');
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      const found = res.body.find((u: any) => u.id === userRes.body.id);
+      expect(found).toBeDefined();
+      expect(found.deletedAt).toBeDefined();
+    });
+
+    it('should not include active users', async () => {
+      const res = await request(app).get('/api/v1/users/deleted');
+
+      const activeUser = res.body.find((u: any) => u.email === 'john@example.com');
+      expect(activeUser).toBeUndefined();
+    });
+  });
+
   describe('POST /api/v1/users/:idUser/restore', () => {
     it('should restore a soft-deleted user', async () => {
       const userRes = await request(app).post('/api/v1/users').send({

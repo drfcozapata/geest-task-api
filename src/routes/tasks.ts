@@ -338,6 +338,45 @@ router.get(
 
 /**
  * @swagger
+ * /api/v1/tasks/deleted:
+ *   get:
+ *     tags: [Tasks]
+ *     summary: Get all soft-deleted tasks
+ *     description: Returns tasks that have been soft-deleted (deleted_at IS NOT NULL).
+ *     responses:
+ *       200:
+ *         description: List of deleted tasks
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   title:
+ *                     type: string
+ *                   description:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *                   deletedAt:
+ *                     type: string
+ *                     format: date-time
+ */
+router.get('/deleted', async (req: Request, res: Response) => {
+  const pool = getPool();
+
+  const [tasks] = await pool.query(
+    'SELECT id, title, description, status, deleted_at as deletedAt FROM tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC'
+  );
+
+  res.json(tasks);
+});
+
+/**
+ * @swagger
  * /api/v1/tasks/{idTask}:
  *   get:
  *     tags: [Tasks]

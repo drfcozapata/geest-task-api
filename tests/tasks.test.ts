@@ -228,6 +228,29 @@ describe('Task Endpoints', () => {
     });
   });
 
+  describe('GET /api/v1/tasks/deleted', () => {
+    it('should return list of soft-deleted tasks', async () => {
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'Deleted List Task' });
+
+      await request(app).delete(`/api/v1/tasks/${taskRes.body.id}`);
+
+      const res = await request(app).get('/api/v1/tasks/deleted');
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      const found = res.body.find((t: any) => t.id === taskRes.body.id);
+      expect(found).toBeDefined();
+      expect(found.deletedAt).toBeDefined();
+    });
+
+    it('should not include active tasks', async () => {
+      const res = await request(app).get('/api/v1/tasks/deleted');
+
+      const activeTask = res.body.find((t: any) => t.title === 'Detail Task');
+      expect(activeTask).toBeUndefined();
+    });
+  });
+
   describe('POST /api/v1/tasks/:idTask/restore', () => {
     it('should restore a soft-deleted task', async () => {
       const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'Restore Task' });

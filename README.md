@@ -69,30 +69,32 @@ NOTIFY_URL=https://httpbin.org/post
 NODE_ENV=development
 ```
 
-## Endpoints (9 exigidos por el Reto + 4 de la mejora elegida)
+## Endpoints (9 exigidos por el Reto + 6 de la mejora elegida)
 
 ### Usuarios
 
-| Método | Ruta                   | Descripción                    |
-| ------ | ---------------------- | ------------------------------ |
-| POST   | /users                 | Crear usuario                  |
-| GET    | /users                 | Listar usuarios                |
-| GET    | /users/:idUser/tasks   | Tareas del usuario             |
-| DELETE | /users/:idUser         | Eliminar usuario (soft delete) |
-| POST   | /users/:idUser/restore | Restaurar usuario eliminado    |
+| Método | Ruta                     | Descripción                      |
+| ------ | ------------------------ | -------------------------------- |
+| POST   | /users                   | Crear usuario                    |
+| GET    | /users                   | Listar usuarios activos          |
+| GET    | /users/deleted           | Listar usuarios eliminados       |
+| GET    | /users/:idUser/tasks     | Tareas del usuario               |
+| DELETE | /users/:idUser           | Eliminar usuario (soft delete)   |
+| POST   | /users/:idUser/restore   | Restaurar usuario eliminado      |
 
 ### Tareas
 
-| Método | Ruta                         | Descripción                  |
-| ------ | ---------------------------- | ---------------------------- |
-| POST   | /tasks                       | Crear tarea                  |
-| GET    | /tasks                       | Listar tareas                |
-| GET    | /tasks/:idTask               | Detalle de tarea             |
-| POST   | /tasks/:idTask/assign        | Asignar usuarios             |
-| POST   | /tasks/:idTask/complete      | Marcar completada            |
-| GET    | /tasks/:idTask/notifications | Notificaciones               |
-| DELETE | /tasks/:idTask               | Eliminar tarea (soft delete) |
-| POST   | /tasks/:idTask/restore       | Restaurar tarea eliminada    |
+| Método | Ruta                           | Descripción                    |
+| ------ | ------------------------------ | ------------------------------ |
+| POST   | /tasks                         | Crear tarea                    |
+| GET    | /tasks                         | Listar tareas activas          |
+| GET    | /tasks/deleted                 | Listar tareas eliminadas       |
+| GET    | /tasks/:idTask                 | Detalle de tarea               |
+| POST   | /tasks/:idTask/assign          | Asignar usuarios               |
+| POST   | /tasks/:idTask/complete        | Marcar completada              |
+| GET    | /tasks/:idTask/notifications   | Notificaciones                 |
+| DELETE | /tasks/:idTask                 | Eliminar tarea (soft delete)   |
+| POST   | /tasks/:idTask/restore         | Restaurar tarea eliminada      |
 
 ### Documentación
 
@@ -176,6 +178,7 @@ Sin soft delete, el sistema no cumple con necesidades básicas de auditoría y r
 
 - **Validación de integridad:** No se puede eliminar un usuario con tareas activas (error 409)
 - **Endpoints de restauración:** POST `/users/:idUser/restore` y POST `/tasks/:idTask/restore`
+- **Listado de eliminados:** GET `/users/deleted` y GET `/tasks/deleted` para ver registros soft-deleted
 - **Transparencia en consultas:** GET endpoints filtran automáticamente por `deleted_at IS NULL`
 
 ### ¿Por qué esta mejora sobre otras alternativas?
