@@ -9,16 +9,39 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: geest_task_db_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - run: npm ci
-      - run: npm test
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Setup test database
+        run: |
+          sed 's/USE geest_task_db;//' migrations/001_initial_schema.sql | mysql -h 127.0.0.1 -u root -proot geest_task_db_test
+          sed 's/USE geest_task_db;//' migrations/002_seed.sql | mysql -h 127.0.0.1 -u root -proot geest_task_db_test
+          sed 's/USE geest_task_db;//' migrations/003_notifications_per_attempt.sql | mysql -h 127.0.0.1 -u root -proot geest_task_db_test
+
+      - run: pnpm test
 
   deploy:
     needs: test
@@ -36,6 +59,6 @@ jobs:
           script: |
             cd /opt/geest-task-api
             git pull origin main
-            npm install --include=dev
-            npm run build
+            pnpm install --frozen-lockfile
+            pnpm run build
             sudo systemctl restart geest-task-api
