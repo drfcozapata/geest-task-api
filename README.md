@@ -234,43 +234,64 @@ El esquema incluye 5 tablas:
 
 ## Despliegue
 
-La API está desplegada y disponible en una URL pública. Se utilizaron dos servicios por separado ya que no existe una plataforma gratuita que ofrezca hosting de Node.js + MySQL en un solo servicio:
+La API está desplegada en **AWS** utilizando servicios del **Free Tier** (12 meses sin costo):
 
-| Servicio   | Rol                     | Proveedor           | Plan          |
-| ---------- | ----------------------- | ------------------- | ------------- |
-| **Render** | API (Node.js + Express) | Render Web Services | Free          |
-| **Aiven**  | Base de datos MySQL     | Aiven Cloud         | Free (0.5 GB) |
+| Servicio        | Instancia       | Rol                     | Costo         |
+| --------------- | --------------- | ----------------------- | ------------- |
+| **EC2**         | t3.micro        | API (Node.js + Express) | Free (750h/mes) |
+| **RDS MySQL**   | db.t3.micro     | Base de datos           | Free (750h/mes, 20 GB) |
 
-### ¿Por qué esta combinación?
+### ¿Por qué AWS Free Tier?
 
-- **Railway** ofrece Node.js + MySQL en un clic, pero su tier gratuito fue discontinuado; el plan más barato cobra por uso.
-- **Render** ofrece web services Node.js gratuitos (con cold start), pero no incluye MySQL.
-- **Aiven** ofrece MySQL gratuito con 0.5 GB de almacenamiento, suficiente para este proyecto.
-- La combinación Render + Aiven mantiene el costo en $0 y ambas plataformas son estables y confiables.
+- **EC2 t3.micro** ofrece 750 horas/mes de computing gratuito durante 12 meses, suficiente para una API en producción con tráfico moderado.
+- **RDS MySQL db.t3.micro** ofrece 750 horas/mes + 20 GB de almacenamiento SSD, con backups automáticos, monitoreo y mantenimiento gestionado por AWS.
+- A diferencia de plataformas como Render (que duerme por inactividad) o Aiven (que apaga el servicio tras periodos de inactividad), EC2 mantiene la API activa 24/7 sin cold starts.
+- CI/CD automatizado con **GitHub Actions**: cada push a `main` ejecuta tests y redeploya automáticamente en EC2.
+
+### Arquitectura
+
+```
+GitHub (repo) → GitHub Actions → SSH a EC2 → git pull → npm build → restart service
+                                      ↓
+                                RDS MySQL (BD)
+```
 
 ### URL de la API desplegada
 
-> **[https://geest-task-api.onrender.com/](https://geest-task-api.onrender.com/)**
-
-> _NOTA_: el free tier de Render duerme por inactividad, por lo que **el primer request** puede tardar ~30-60 segundos en responder, lo que no significa que esté caído. Se puede consultar el endpoint '/health' (link a continuación) antes de hacer uso de la API para garantizar que estará '_despierto_'.
+> **http://44.205.22.107:3000**
 
 Endpoints disponibles:
 
-- `GET /health` — [Health check](https://geest-task-api.onrender.com/health)
-- `GET /docs` — [Swagger UI](https://geest-task-api.onrender.com/docs)
+- `GET /health` — [Health check](http://44.205.22.107:3000/health)
+- `GET /docs` — [Swagger UI](http://44.205.22.107:3000/docs)
 - `POST /users`, `GET /users`, etc. — tal como se documentan en la sección Endpoints
+
+### CI/CD
+
+El pipeline de GitHub Actions (`.github/workflows/deploy.yml`) ejecuta automáticamente:
+
+1. **Test** — `npm test` en cada push (rama `main` y PRs)
+2. **Deploy** — Solo en push a `main`: build + restart del servicio en EC2
+
+Para que el pipeline funcione, se requieren los siguientes **Repository Secrets** en GitHub:
+
+| Secret             | Descripción                        |
+| ------------------ | ---------------------------------- |
+| `EC2_HOST`         | IP pública de EC2 (`44.205.22.107`) |
+| `EC2_SSH_KEY`      | Contenido privado del key pair PEM |
+| `EC2_USERNAME`     | `ec2-user`                         |
 
 ### Cómo ejecutar localmente
 
 ```bash
 # Clonar y configurar
-git clone https://github.com/tu-usuario/geest-task-api.git
+git clone https://github.com/drfcozapata/geest-task-api.git
 cd geest-task-api
 npm install
 cp .env.example .env
-# Editar .env con tus credenciales de MySQL
+# Editar .env con las credenciales del RDS de AWS
 
-# Crear BD y tablas
+# Crear BD y tablas (si se usa una BD local)
 mysql -u root -p < migrations/001_initial_schema.sql
 mysql -u root -p geest_task_db < migrations/002_seed.sql
 mysql -u root -p geest_task_db < migrations/003_notifications_per_attempt.sql
