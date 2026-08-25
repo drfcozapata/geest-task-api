@@ -69,16 +69,17 @@ NOTIFY_URL=https://httpbin.org/post
 NODE_ENV=development
 ```
 
-## Endpoints
+## Endpoints (9 exigidos por el Reto + 4 de la mejora elegida)
 
 ### Usuarios
 
-| Método | Ruta                 | Descripción                    |
-| ------ | -------------------- | ------------------------------ |
-| POST   | /users               | Crear usuario                  |
-| GET    | /users               | Listar usuarios                |
-| GET    | /users/:idUser/tasks | Tareas del usuario             |
-| DELETE | /users/:idUser       | Eliminar usuario (soft delete) |
+| Método | Ruta                   | Descripción                    |
+| ------ | ---------------------- | ------------------------------ |
+| POST   | /users                 | Crear usuario                  |
+| GET    | /users                 | Listar usuarios                |
+| GET    | /users/:idUser/tasks   | Tareas del usuario             |
+| DELETE | /users/:idUser         | Eliminar usuario (soft delete) |
+| POST   | /users/:idUser/restore | Restaurar usuario eliminado    |
 
 ### Tareas
 
@@ -91,6 +92,7 @@ NODE_ENV=development
 | POST   | /tasks/:idTask/complete      | Marcar completada            |
 | GET    | /tasks/:idTask/notifications | Notificaciones               |
 | DELETE | /tasks/:idTask               | Eliminar tarea (soft delete) |
+| POST   | /tasks/:idTask/restore       | Restaurar tarea eliminada    |
 
 ### Documentación
 
@@ -162,7 +164,7 @@ erDiagram
     TASKS ||--o{ NOTIFICATIONS : "archived_in"
 ```
 
-## Mejora elegida: Soft Delete
+## Mejora elegida: Soft Delete con Endpoints DELETE + Restore
 
 ### ¿Qué problema resuelve?
 
@@ -170,13 +172,23 @@ El borrado físico (`DELETE`) elimina registros permanentemente. En un sistema d
 
 ### ¿Por qué consideraste que era necesaria?
 
-Sin soft delete, el sistema no cumple con necesidades básicas de auditoría y retención de datos que cualquier producto empresarial requiere. Un usuario o tarea eliminados no deberían desaparecer del historial; deberían marcarse como inactivos y excluirse de las consultas normales.
+Sin soft delete, el sistema no cumple con necesidades básicas de auditoría y retención de datos que cualquier producto empresarial requiere. Un usuario o tarea eliminados no deberían desaparecer del historial; deberían marcarse como inactivos y excluirse de las consultas normales. La mejora incluye:
+
+- **Validación de integridad:** No se puede eliminar un usuario con tareas activas (error 409)
+- **Endpoints de restauración:** POST `/users/:idUser/restore` y POST `/tasks/:idTask/restore`
+- **Transparencia en consultas:** GET endpoints filtran automáticamente por `deleted_at IS NULL`
 
 ### ¿Por qué esta mejora sobre otras alternativas?
 
-- **vs. tabla de auditoría separada:** el soft delete mantiene los datos en la misma tabla con consultas transparentes (`WHERE deleted_at IS NULL`), sin complejidad adicional de sincronización entre tablas.
-- **vs. paginación / rate-limiting / auth:** estas mejoras aportan valor operativo, pero el soft delete resuelve un problema de integridad de datos que afecta directamente la confiabilidad del producto.
-- **vs. Swagger:** Swagger es herramienta de documentación, no funcionalidad de producto. El reto pide una mejora funcional, no tooling.
+Se evaluaron 5 opciones antes de elegir esta:
+
+| Opción                    | Tipo de mejora       | Por qué se descartó                                                      |
+| ------------------------- | -------------------- | ------------------------------------------------------------------------ |
+| **Paginación**            | Presentación         | Mejora UX pero no agrega lógica de negocio ni protege datos              |
+| **Búsqueda y filtrado**   | Presentación         | Útil para UX, pero son queries sobre datos existentes                    |
+| **Estadísticas**          | Analítica            | Read-only sobre datos existentes, sin impacto en gestión                 |
+| **Tabla de auditoría**    | Gestión de datos     | Agrega complejidad adicional de sincronización entre tablas              |
+| **Soft delete + restore** | **Gestión de datos** | **Protege integridad, permite recuperación, activa columnas existentes** |
 
 ## Funcionalidades recortadas
 
@@ -188,7 +200,7 @@ No se recortó funcionalidad requerida por el reto. Fuera del alcance quedaron:
 
 ## Decisiones Técnicas
 
-1. **Soft delete:** Se utiliza `deleted_at` nullable para preservar el histórico de datos
+1. **Soft delete con restore:** Se utiliza `deleted_at` nullable para preservar el histórico. Incluye validación de integridad (no permite eliminar usuarios con tareas activas) y endpoints de restauración
 2. **Idempotencia:** Implementada con tabla `idempotency_keys` y patrón "reservar primero" dentro de transacciones explícitas para garantizar concurrencia real
 3. **Notificaciones:** Worker asíncrono con reintentos exponenciales (1s, 3s, 10s) y historial por intento (una fila por intento)
 4. **Archivado exactly-once:** Transacción con `SELECT ... FOR UPDATE` para serializar completions paralelas
@@ -206,12 +218,59 @@ No se recortó funcionalidad requerida por el reto. Fuera del alcance quedaron:
 
 ## Testing
 
+Los tests usan una base de datos dedicada (`geest_task_db_test`) separada de la de producción.
+
+### Requisitos previos
+
+- MySQL corriendo localmente (o en un servidor accesible)
+- Node.js v24+
+
+### Configuración
+
 ```bash
-# Ejecutar tests
-npm test
+# 1. Crear la base de datos de tests
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS geest_task_db_test"
+
+# 2. Aplicar esquema y datos de prueba
+# IMPORTANTE: Los archivos de migración contienen USE geest_task_db.
+# Para aplicarlos a geest_task_db_test, usa sed para eliminar esa línea:
+sed 's/USE geest_task_db;//' migrations/001_initial_schema.sql | mysql -u root geest_task_db_test
+sed 's/USE geest_task_db;//' migrations/002_seed.sql | mysql -u root geest_task_db_test
+sed 's/USE geest_task_db;//' migrations/003_notifications_per_attempt.sql | mysql -u root geest_task_db_test
+
+# 3. Ejecutar tests
+pnpm test
+```
+
+> **¿Por qué `sed`?** Las migraciones originales incluyen `USE geest_task_db` para configuración de producción. Al eliminar esa línea y pasar la BD por stdin, forzamos que las tablas se creen en `geest_task_db_test`.
+
+### Variables de entorno de tests
+
+El archivo `.env.test` define la configuración para tests:
+
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=geest_task_db_test
+NODE_ENV=test
+DB_SSL=false
+```
+
+Si tu MySQL usa credenciales distintas (por ejemplo usuario sin password, o contraseña definida), edita `.env.test` antes de ejecutar los tests.
+
+### Ejecución
+
+```bash
+# Ejecutar todos los tests
+pnpm test
 
 # Ejecutar tests en modo watch
-npm run test:watch
+pnpm run test:watch
+
+# Ejecutar tests con coverage
+pnpm test -- --coverage
 ```
 
 ## Base de Datos
@@ -236,16 +295,16 @@ El esquema incluye 5 tablas:
 
 La API está desplegada en **AWS** utilizando servicios del **Free Tier** (12 meses sin costo):
 
-| Servicio        | Instancia       | Rol                     | Costo         |
-| --------------- | --------------- | ----------------------- | ------------- |
-| **EC2**         | t3.micro        | API (Node.js + Express) | Free (750h/mes) |
-| **RDS MySQL**   | db.t3.micro     | Base de datos           | Free (750h/mes, 20 GB) |
+| Servicio      | Instancia   | Rol                     | Costo                  |
+| ------------- | ----------- | ----------------------- | ---------------------- |
+| **EC2**       | t3.micro    | API (Node.js + Express) | Free (750h/mes)        |
+| **RDS MySQL** | db.t3.micro | Base de datos           | Free (750h/mes, 20 GB) |
 
 ### ¿Por qué AWS Free Tier?
 
 - **EC2 t3.micro** ofrece 750 horas/mes de computing gratuito durante 12 meses, suficiente para una API en producción con tráfico moderado.
 - **RDS MySQL db.t3.micro** ofrece 750 horas/mes + 20 GB de almacenamiento SSD, con backups automáticos, monitoreo y mantenimiento gestionado por AWS.
-- A diferencia de plataformas como Render (que duerme por inactividad) o Aiven (que apaga el servicio tras periodos de inactividad), EC2 mantiene la API activa 24/7 sin cold starts.
+- EC2 mantiene la API activa 24/7 sin cold starts.
 - CI/CD automatizado con **GitHub Actions**: cada push a `main` ejecuta tests y redeploya automáticamente en EC2.
 
 ### Arquitectura
@@ -275,11 +334,11 @@ El pipeline de GitHub Actions (`.github/workflows/deploy.yml`) ejecuta automáti
 
 Para que el pipeline funcione, se requieren los siguientes **Repository Secrets** en GitHub:
 
-| Secret             | Descripción                        |
-| ------------------ | ---------------------------------- |
-| `EC2_HOST`         | IP pública de EC2 (`44.205.22.107`) |
-| `EC2_SSH_KEY`      | Contenido privado del key pair PEM |
-| `EC2_USERNAME`     | `ec2-user`                         |
+| Secret         | Descripción                         |
+| -------------- | ----------------------------------- |
+| `EC2_HOST`     | IP pública de EC2 (`44.205.22.107`) |
+| `EC2_SSH_KEY`  | Contenido privado del key pair PEM  |
+| `EC2_USERNAME` | `ec2-user`                          |
 
 ### Cómo ejecutar localmente
 

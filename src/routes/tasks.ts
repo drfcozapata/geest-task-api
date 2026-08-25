@@ -425,6 +425,7 @@ router.get('/:idTask/notifications', async (req: Request, res: Response) => {
  *   delete:
  *     tags: [Tasks]
  *     summary: Soft delete a task
+ *     description: Marks a task as deleted. The task and its assignments are preserved for audit purposes.
  *     parameters:
  *       - in: path
  *         name: idTask
@@ -452,6 +453,52 @@ router.delete('/:idTask', async (req: Request, res: Response) => {
   }
 
   res.json({ message: 'Task deleted' });
+});
+
+/**
+ * @swagger
+ * /api/v1/tasks/{idTask}/restore:
+ *   post:
+ *     tags: [Tasks]
+ *     summary: Restore a soft-deleted task
+ *     description: Clears the deleted_at timestamp, making the task active again with its assignments intact.
+ *     parameters:
+ *       - in: path
+ *         name: idTask
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Task restored successfully
+ *       404:
+ *         description: Task not found or not deleted
+ */
+router.post('/:idTask/restore', async (req: Request, res: Response) => {
+  const { idTask } = req.params;
+  const pool = getPool();
+
+  const [tasks] = await pool.query(
+    'SELECT id FROM tasks WHERE id = ? AND deleted_at IS NOT NULL',
+    [idTask]
+  );
+
+  if ((tasks as any[]).length === 0) {
+    throw createError(404, 'TASK_NOT_FOUND', `Task with id ${idTask} does not exist or is not deleted`);
+  }
+
+  await pool.query(
+    'UPDATE tasks SET deleted_at = NULL WHERE id = ?',
+    [idTask]
+  );
+
+  const [rows] = await pool.query(
+    'SELECT id, title, description, status, created_at as createdAt FROM tasks WHERE id = ?',
+    [idTask]
+  );
+
+  const task = (rows as any[])[0];
+  res.json({ message: 'Task restored', task });
 });
 
 export default router;

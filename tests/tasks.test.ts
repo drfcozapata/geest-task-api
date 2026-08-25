@@ -216,5 +216,55 @@ describe('Task Endpoints', () => {
 
       expect(res.status).toBe(404);
     });
+
+    it('should not appear in GET after deletion', async () => {
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'Hidden Task' });
+
+      await request(app).delete(`/api/v1/tasks/${taskRes.body.id}`);
+
+      const res = await request(app).get('/api/v1/tasks');
+      const ids = (res.body as any[]).map((t: any) => t.id);
+      expect(ids).not.toContain(taskRes.body.id);
+    });
+  });
+
+  describe('POST /api/v1/tasks/:idTask/restore', () => {
+    it('should restore a soft-deleted task', async () => {
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'Restore Task' });
+
+      await request(app).delete(`/api/v1/tasks/${taskRes.body.id}`);
+
+      const res = await request(app).post(`/api/v1/tasks/${taskRes.body.id}/restore`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('Task restored');
+      expect(res.body.task).toHaveProperty('id');
+      expect(res.body.task.title).toBe('Restore Task');
+    });
+
+    it('should return 404 if task not found', async () => {
+      const res = await request(app).post('/api/v1/tasks/99999/restore');
+
+      expect(res.status).toBe(404);
+    });
+
+    it('should return 404 if task is not deleted', async () => {
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'NotDeleted Task' });
+
+      const res = await request(app).post(`/api/v1/tasks/${taskRes.body.id}/restore`);
+
+      expect(res.status).toBe(404);
+    });
+
+    it('should appear in GET after restoration', async () => {
+      const taskRes = await request(app).post('/api/v1/tasks').send({ title: 'Visible Again Task' });
+
+      await request(app).delete(`/api/v1/tasks/${taskRes.body.id}`);
+      await request(app).post(`/api/v1/tasks/${taskRes.body.id}/restore`);
+
+      const res = await request(app).get('/api/v1/tasks');
+      const ids = (res.body as any[]).map((t: any) => t.id);
+      expect(ids).toContain(taskRes.body.id);
+    });
   });
 });

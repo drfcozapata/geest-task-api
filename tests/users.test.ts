@@ -96,5 +96,63 @@ describe('User Endpoints', () => {
 
       expect(res.status).toBe(404);
     });
+
+    it('should return 409 if user has active tasks', async () => {
+      const userRes = await request(app).post('/api/v1/users').send({
+        name: 'Active',
+        lastName: 'User',
+        email: 'active@example.com',
+      });
+
+      const taskRes = await request(app).post('/api/v1/tasks').send({
+        title: 'Active Task',
+      });
+
+      await request(app)
+        .post(`/api/v1/tasks/${taskRes.body.id}/assign`)
+        .send({ userIds: [userRes.body.id] });
+
+      const res = await request(app).delete(`/api/v1/users/${userRes.body.id}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('USER_HAS_ACTIVE_TASKS');
+    });
+  });
+
+  describe('POST /api/v1/users/:idUser/restore', () => {
+    it('should restore a soft-deleted user', async () => {
+      const userRes = await request(app).post('/api/v1/users').send({
+        name: 'ToRestore',
+        lastName: 'User',
+        email: 'restore@example.com',
+      });
+
+      await request(app).delete(`/api/v1/users/${userRes.body.id}`);
+
+      const res = await request(app).post(`/api/v1/users/${userRes.body.id}/restore`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('User restored');
+      expect(res.body.user).toHaveProperty('id');
+      expect(res.body.user.name).toBe('ToRestore');
+    });
+
+    it('should return 404 if user not found', async () => {
+      const res = await request(app).post('/api/v1/users/99999/restore');
+
+      expect(res.status).toBe(404);
+    });
+
+    it('should return 404 if user is not deleted', async () => {
+      const userRes = await request(app).post('/api/v1/users').send({
+        name: 'NotDeleted',
+        lastName: 'User',
+        email: 'notdeleted@example.com',
+      });
+
+      const res = await request(app).post(`/api/v1/users/${userRes.body.id}/restore`);
+
+      expect(res.status).toBe(404);
+    });
   });
 });

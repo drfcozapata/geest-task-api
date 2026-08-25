@@ -169,6 +169,7 @@ router.get('/:idUser/tasks', async (req: Request, res: Response) => {
  *   delete:
  *     tags: [Users]
  *     summary: Soft delete a user
+ *     description: Marks a user as deleted. Cannot delete a user with active (open) tasks.
  *     parameters:
  *       - in: path
  *         name: idUser
@@ -180,22 +181,91 @@ router.get('/:idUser/tasks', async (req: Request, res: Response) => {
  *         description: User deleted successfully
  *       404:
  *         description: User not found
+ *       409:
+ *         description: User has active tasks
  */
 router.delete('/:idUser', async (req: Request, res: Response) => {
   const { idUser } = req.params;
   const pool = getPool();
 
-  const [result] = await pool.query(
+  const [users] = await pool.query(
+    'SELECT id FROM users WHERE id = ? AND deleted_at IS NULL',
+    [idUser]
+  );
+
+  if ((users as any[]).length === 0) {
+    throw createError(404, 'USER_NOT_FOUND', `User with id ${idUser} does not exist`);
+  }
+
+  const [activeTasks] = await pool.query(
+    `SELECT t.id, t.title
+     FROM tasks t
+     INNER JOIN task_assignments ta ON t.id = ta.task_id
+     WHERE ta.user_id = ? AND t.status = 'open' AND t.deleted_at IS NULL`,
+    [idUser]
+  );
+
+  if ((activeTasks as any[]).length > 0) {
+    const taskIds = (activeTasks as any[]).map((t: any) => t.id).join(', ');
+    throw createError(
+      409,
+      'USER_HAS_ACTIVE_TASKS',
+      `Cannot delete user with active tasks. Tasks: ${taskIds}`
+    );
+  }
+
+  await pool.query(
     'UPDATE users SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL',
     [idUser]
   );
 
-  const updateResult = result as any;
-  if (updateResult.affectedRows === 0) {
-    throw createError(404, 'USER_NOT_FOUND', `User with id ${idUser} does not exist`);
+  res.json({ message: 'User deleted' });
+});
+
+/**
+ * @swagger
+ * /api/v1/users/{idUser}/restore:
+ *   post:
+ *     tags: [Users]
+ *     summary: Restore a soft-deleted user
+ *     description: Clears the deleted_at timestamp, making the user active again.
+ *     parameters:
+ *       - in: path
+ *         name: idUser
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: User restored successfully
+ *       404:
+ *         description: User not found or not deleted
+ */
+router.post('/:idUser/restore', async (req: Request, res: Response) => {
+  const { idUser } = req.params;
+  const pool = getPool();
+
+  const [users] = await pool.query(
+    'SELECT id FROM users WHERE id = ? AND deleted_at IS NOT NULL',
+    [idUser]
+  );
+
+  if ((users as any[]).length === 0) {
+    throw createError(404, 'USER_NOT_FOUND', `User with id ${idUser} does not exist or is not deleted`);
   }
 
-  res.json({ message: 'User deleted' });
+  await pool.query(
+    'UPDATE users SET deleted_at = NULL WHERE id = ?',
+    [idUser]
+  );
+
+  const [rows] = await pool.query(
+    'SELECT id, name, last_name as lastName, email, created_at as createdAt FROM users WHERE id = ?',
+    [idUser]
+  );
+
+  const user = (rows as any[])[0];
+  res.json({ message: 'User restored', user });
 });
 
 export default router;
