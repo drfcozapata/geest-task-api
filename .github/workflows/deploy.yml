@@ -71,6 +71,6 @@ jobs:
             cd /opt/geest-task-api
             sudo git fetch origin main
             sudo git reset --hard origin/main
-            sudo npm install --omit=dev
+            sudo npm install
             sudo npm run build
             sudo systemctl restart geest-task-api
