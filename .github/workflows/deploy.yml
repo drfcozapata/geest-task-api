@@ -67,8 +67,9 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            sudo git config --global --add safe.directory /opt/geest-task-api
             cd /opt/geest-task-api
-            git pull origin main
-            pnpm install --frozen-lockfile
-            pnpm run build
+            sudo git pull origin main
+            npm install --omit=dev
+            sudo npm run build
             sudo systemctl restart geest-task-api
