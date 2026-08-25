@@ -69,7 +69,8 @@ jobs:
           script: |
             sudo git config --global --add safe.directory /opt/geest-task-api
             cd /opt/geest-task-api
-            sudo git pull origin main
-            npm install --omit=dev
+            sudo git fetch origin main
+            sudo git reset --hard origin/main
+            sudo npm install --omit=dev
             sudo npm run build
             sudo systemctl restart geest-task-api
