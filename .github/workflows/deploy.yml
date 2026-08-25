@@ -51,6 +51,7 @@ jobs:
           DB_PASSWORD: root
           DB_NAME: geest_task_db_test
           DB_SSL: "false"
+          NOTIFY_URL: https://httpbin.org/post
 
   deploy:
     needs: test
