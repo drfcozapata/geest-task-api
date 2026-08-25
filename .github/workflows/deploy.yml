@@ -36,12 +36,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Setup test database
+        env:
+          MYSQL_PWD: root
         run: |
-          sed 's/USE geest_task_db;//' migrations/001_initial_schema.sql | mysql -h 127.0.0.1 -u root -proot geest_task_db_test
-          sed 's/USE geest_task_db;//' migrations/002_seed.sql | mysql -h 127.0.0.1 -u root -proot geest_task_db_test
-          sed 's/USE geest_task_db;//' migrations/003_notifications_per_attempt.sql | mysql -h 127.0.0.1 -u root -proot geest_task_db_test
+          sed 's/USE geest_task_db;//' migrations/001_initial_schema.sql | mysql -h 127.0.0.1 -u root geest_task_db_test
+          sed 's/USE geest_task_db;//' migrations/002_seed.sql | mysql -h 127.0.0.1 -u root geest_task_db_test
+          sed 's/USE geest_task_db;//' migrations/003_notifications_per_attempt.sql | mysql -h 127.0.0.1 -u root geest_task_db_test
 
       - run: pnpm test
+        env:
+          DB_PASSWORD: root
 
   deploy:
     needs: test
